@@ -6,143 +6,211 @@ Motor de base de datos: MySQL 8
 Nombre de la base: DynamicBrandsRetail
 Contexto: Dynamic Brands es una empresa que usa IA para hacer sitios de e-commerce dinámicos. Se usan parámetros como logo, país y enfoque de mercadeo, la plataforma crea tiendas virtuales que comercian productos sacados de Etheria Global. La idea es que la base permita gestionar datos como lo son la marca, sitios, pedidos, detalles generales de venta, requisitos regulatorios y de envío, costos y tipos de cambio. Esto anterior para que sea posible unificar la información con Etheria Global para distintos análisis. 
 
-#Tablas:
+# Tables
 
-##paises:
--paisId INT auto-increment PK
--nombrePais varchar(80) unique not NULL
--codigoISO varchar(5) unique not NULL
--monedaPais varchar(10) not NULL
--activo boolean not NULL
+## employees
+- employeeId auto-increment PK
+- fullName varchar(150) NOT NULL
+- email varchar(80) UNIQUE NOT NULL
+- passwordHash varchar(255) NOT NULL
+- isActive boolean NOT NULL DEFAULT TRUE
+- createdAt timestamp NOT NULL
 
-##sitiosWeb:
--sitioWebId INT auto-increment PK
--nombreSitio varchar(100) unique not NULL
--enlaceSitio varchar(250) unique not NULL
--paisId FK not NULL
--enfoqueMarketing varchar(20) not NULL
--eslogan varchar(30)
--activo boolean not NULL
--fechaCreacion DATETIME not NULL
+## countries
+- countryId auto-increment PK
+- name varchar(80) NOT NULL UNIQUE
+- isoCode char(2) NOT NULL UNIQUE
+- isActive boolean NOT NULL DEFAULT TRUE
+- createdAt timestamp NOT NULL
 
-##marcas:
--marcaId INT auto-increment PK
--sitioWebId FK not NULL
--nombreMarca varchar(100) not NULL
--logoURL varchar(200) 
--descripcionMarca varchar(250) 
--actitudMarca varchar(20)
--activo boolean not NULL
+## cities
+- cityId auto-increment PK
+- countryId FK NOT NULL
+- name varchar(50) NOT NULL
+- createdAt timestamp NOT NULL
 
-##tiposProductos: //tipos generales
--tipoProductoId INT auto-increment PK
--nombreTipoP varchar(30) unique not NULL
--descripcionProducto varchar(100) 
+## addresses
+- addressId PK
+- cityId FK NOT NULL
+- exactAddress varchar(250) NOT NULL
+- postalCode varchar(20)
+- createdAt timestamp NOT NULL
 
-##productoMadre: //estos se extraen de Etheria antes de etiquetas con otras marcas
--productoMadreId INT auto-increment PK
--codigoEtheriaProducto varchar(20) unique not NULL
--nombrePMadre varchar(40) not NULL
--tipoProductoId FK not NULL
--uso varchar(20) not NULL
--unidadMedida varchar(20) not NULL
--activo boolean not NULL
+## taxRates
+- taxRateId INT auto-increment PK
+- countryId INT FK NOT NULL
+- rate DECIMAL(5,2) NOT NULL
+- validFrom DATE NOT NULL
+- validTo DATE
+- isActive boolean NOT NULL DEFAULT TRUE
+- createdAt timestamp NOT NULL DEFAULT 
 
-##productosDeComercio: //productos para la venta que provienen de Etheria
--productoComercioId INT auto-increment PK
--marcaId FK not NULL
--productoMadreId FK not NULL
--nombrePComercio varchar(50) not NULL 
--descripcionPComercio varchar(200)
--stock INT not NULL
--activo boolean not NULL
--presentacionProducto varchar(30) not NULL 
--monedaTipo varchar(10) not NULL
--precioVentaLocal DECIMAL(12,2) not NULL
--caracteristicaPrincipal varchar(30) //relajante, antiestrés, diversion, etc  
+## currencies
+- currencyId auto-increment PK
+- symbol varchar(1) NOT NULL
+- name varchar(50) NOT NULL
+- countryId FK NOT NULL
+- createdAt timestamp NOT NULL
+- isActive boolean NOT NULL DEFAULT TRUE
+- employeeId FK NOT NULL
 
-##clientes:
--clienteId INT auto-increment PK
--nombreCliente varchar(50) not NULL
--apellidos varchar(100) not NULL
--correo varchar(120) unique not NULL
--password varchar(250) not NULL
--telefono varchar(30)
--paisId FK not NULL
--fechaRegistro DATETIME not NULL
--activo boolean not NULL 
+## exchangeRates
+- exchangeRateId auto-increment PK
+- fromCurrencyId FK NOT NULL
+- toCurrencyId FK NOT NULL
+- rate DECIMAL(10,4) NOT NULL
+- createdAt timestamp NOT NULL
+- employeeId FK NOT NULL
 
-##encargos: 
--encargoId INT auto-increment PK 
--sitioWebId FK not NULL
--clienteId FK not NULL
--paisId FK not NULL
--monedaTipo varchar(10) not NULL 
--fechaEncargo DATETIME not NULL 
--estadoEncargo varchar(20) not NULL //pendiente, realizado, etc
--subtotalLocal DECIMAL(12,2) not NULL
--costoEnvioLocal DECIMAL(12,2) not NULL
--costoPermisosLocal DECIMAL(12,2) not NULL
--totalLocal DECIMAL(12,2) not NULL
--activo boolean not NULL
+## exchangeHistory
+- exchangeHistoryId auto-increment PK
+- exchangeRateId FK NOT NULL
+- start DATETIME NOT NULL
+- end DATETIME
+- fromCurrencyId FK NOT NULL
+- toCurrencyId FK NOT NULL
+- rate DECIMAL(10,4) NOT NULL
+- createdAt timestamp NOT NULL
+- employeeId FK NOT NULL
 
-##detalleEncargo: 
--detalleEncargoId INT auto-increment PK 
--encargoId FK not NULL
--productoComercioId FK not NULL
--cantidad INT not NULL
--precioUnidad DECIMAL(12,2) not NULL
--subtotalLineaLocal DECIMAL(12,2) not NULL
+## marketingFocus
+- marketingFocusId auto-increment PK
+- name varchar(50) UNIQUE
+- createdAt timestamp NOT NULL
+- employeeId FK NOT NULL
 
-##couriers:
--courierId INT auto-increment PK
--nombreMensajeria varchar(40) not NULL
--telContacto varchar(40) 
--correoContacto varchar(100) 
--activo boolean not NULL
+## websites
+- websiteId auto-increment PK
+- brandId FK NOT NULL
+- name varchar(100) NOT NULL UNIQUE
+- url varchar(250) NOT NULL UNIQUE
+- countryId FK NOT NULL
+- isActive boolean NOT NULL DEFAULT TRUE
+- createdAt timestamp NOT NULL
+- employeeId FK NOT NULL
 
-##envios:
--envioId INT auto-increment PK
--encargoId FK not NULL
--courierId FK not NULL
--codigoDeEnvio varchar(40) unique not NULL
--fechaSalida DATETIME
--fechaEntrega DATETIME
--estadoEnvio varchar(20) not NULL
--costoEnvioRealLocal DECIMAL(12,2) not NULL
+## brands
+- brandId auto-increment PK
+- websiteId FK 
+- name varchar(100) NOT NULL
+- logoUrl varchar(250) NOT NULL
+- description varchar(300) NOT NULL
+- marketingFocusId FK NOT NULL
+- isActive boolean NOT NULL DEFAULT TRUE
+- createdAt timestamp NOT NULL
+- employeeId FK NOT NULL
 
-##requisitosRegulatorios: //general
--requisitoRegulatorioId INT auto-increment PK
--paisId FK not NULL
--tipoProductoId FK not NULL
--nombreRequisitoReg varchar(30) not NULL
--descripcionRequisito varchar(100) 
--requisitoObligatorio boolean not NULL
--costoRequisitoLocal DECIMAL(12,2)
--activo boolean not NULL
+## baseProducts      
+- baseProductId PK
+- productVariantId FK NOT NULL
+- name varchar(100) NOT NULL
+- isActive boolean NOT NULL DEFAULT TRUE
+- createdAt timestamp NOT NULL
+- employeeId FK NOT NULL
 
-##encargosRequisitos: //aplicado a x pedido
--encargoRequisitoId INT auto-increment PK
--encargoId FK not NULL
--requisitoRegulatorioId FK
--terminado boolean not NULL
--fechaRegistro DATETIME not NULL
--comentario varchar(200)
+## commercialProducts
+- commercialProductId auto-increment PK
+- brandId FK NOT NULL
+- baseProductId FK NOT NULL
+- name varchar(80) NOT NULL
+- label varchar(250) NOT NULL
+- isActive boolean NOT NULL DEFAULT TRUE
+- createdAt timestamp NOT NULL
+- employeeId FK NOT NULL
 
-##tiposCambio:
--tipoCambioId INT auto-increment PK
--monedaOrigen varchar(10) not NULL
--monedaDestino varchar(10) not NULL
--resultadoCambio DECIMAL(18,6) not NULL
--fechaVigencia DATE not NULL
+## productPrices
+- productPriceId auto-increment PK
+- commercialProductId FK NOT NULL
+- currencyId FK NOT NULL
+- price DECIMAL(7,2) NOT NULL
+- employeeId FK NOT NULL
+- createdAt timestamp NOT NULL
+- employeeId FK NOT NULL
 
-##logsProcesos:
--logProcesoId INT auto-increment PK
--nombreProceso varchar(30) not NULL
--tablaDeTrabajo varchar(40) not NULL
--descripcionProceso varchar(100) 
--accionRealizada varchar(15) not NULL
--fechaHora DATETIME not NULL
--estadoProceso VARCHAR(30) not NULL
+## customers
+- customerId auto-increment PK
+- firstName varchar(50) NOT NULL
+- lastName varchar(100) NOT NULL
+- email varchar(80) UNIQUE NOT NULL
+- passwordHash varchar(255) NOT NULL
+- phone varchar(15)
+- addressId FK NOT NULL
+- createdAt DATETIME NOT NULL
+- isActive boolean NOT NULL DEFAULT TRUE
 
+## orderStatuses
+- orderStatusId auto-increment PK
+- name varchar(30) NOT NULL UNIQUE
+- description varchar(100) NOT NULL
+- isActive boolean NOT NULL DEFAULT TRUE
 
+## orders
+- orderId auto-increment PK
+- websiteId FK NOT NULL
+- customerId FK NOT NULL
+- addressId FK NOT NULL
+- currencyId FK NOT NULL
+- orderStatusId FK NOT NULL
+- orderDate timestamp NOT NULL DEFAULT 
+- subtotal DECIMAL(7,2) NOT NULL
+- taxAmount DECIMAL(7,2) NOT NULL DEFAULT 0 
+- shippingCost DECIMAL(7,2) NOT NULL DEFAULT 0
+- total DECIMAL(7,2) NOT NULL
+- exchangeRateUsed DECIMAL(10,6)
+- createdAt DATETIME NOT NULL DEFAULT
+- isActive boolean NOT NULL DEFAULT TRUE
+
+## orderDetails
+- orderDetailId auto-increment PK
+- orderId FK NOT NULL
+- commercialProductId FK NOT NULL
+- quantity NOT NULL
+- unitPrice DECIMAL(7,2) NOT NULL
+
+## shippingStatuses
+- shippingStatusId auto-increment PK
+- name varchar(30) NOT NULL UNIQUE
+- description varchar(100) NOT NULL
+- isActive boolean NOT NULL DEFAULT TRUE
+
+## couriers
+- courierId auto-increment PK
+- name varchar(50) NOT NULL
+- phone varchar(50)
+- email varchar(100) NOT NULL
+- countryId FK NOT NULL 
+- isActive boolean NOT NULL DEFAULT TRUE
+- createdAt DATETIME NOT NULL DEFAULT
+- employeeId FK NOT NULL
+
+## shipments
+- shipmentId auto-increment PK
+- orderId FK NOT NULL
+- courierId FK NOT NULL
+- trackingCode varchar(50) UNIQUE NOT NULL
+- shippingStatusId FK NOT NULL
+- shippedAt DATETIME
+- deliveredAt DATETIME
+- isActive boolean NOT NULL DEFAULT TRUE
+- createdAt DATETIME NOT NULL DEFAULT
+- employeeId FK NOT NULL
+
+## processLogTypes
+- processLogTypeId auto-increment PK
+- name varchar(30) NOT NULL UNIQUE
+- description varchar(100) NOT NULL
+- isActive boolean NOT NULL DEFAULT TRUE
+
+## processTypes
+- processTypeId INT auto-increment PK
+- name varchar(50) NOT NULL UNIQUE
+- description varchar(150) NOT NULL
+- isActive boolean NOT NULL DEFAULT TRUE
+
+## processLogs
+- processLogId INT auto-increment PK
+- processLogTypeId FK NOT NULL
+- processTypeId FK NOT NULL
+- description varchar(100) NOT NULL
+- createdAt DATETIME NOT NULL
+- employeeId FK NOT NULL
