@@ -9,15 +9,15 @@ Contexto: Dynamic Brands es una empresa que usa IA para hacer sitios de e-commer
 # Tables
 
 ## employees
-- employeeId auto-increment PK
+- employeeId int auto-increment PK
 - fullName varchar(150) NOT NULL
 - email varchar(80) UNIQUE NOT NULL
-- passwordHash varchar(255) NOT NULL
+- passwordHash varbinary(255) NOT NULL 
 - isActive boolean NOT NULL DEFAULT TRUE
 - createdAt timestamp NOT NULL
 
 ## countries
-- countryId auto-increment PK
+- countryId int auto-increment PK
 - name varchar(80) NOT NULL UNIQUE
 - isoCode char(2) NOT NULL UNIQUE
 - isActive boolean NOT NULL DEFAULT TRUE
@@ -28,178 +28,233 @@ Contexto: Dynamic Brands es una empresa que usa IA para hacer sitios de e-commer
 - countryId FK NOT NULL
 - name varchar(50) NOT NULL
 - createdAt timestamp NOT NULL
+- isActive boolean NOT NULL DEFAULT TRUE
 
 ## addresses
-- addressId PK
-- cityId FK NOT NULL
+- addressId int auto-increment PK
+- cityId int FK NOT NULL
 - exactAddress varchar(250) NOT NULL
+- addressLine2 varchar(250)              -- referencia adicional para saber mas a detalle donde es
 - postalCode varchar(20)
-- createdAt timestamp NOT NULL
+- isActive boolean NOT NULL DEFAULT TRUE
+- createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+- employeeId int FK NOT NULL
+ 
+## taxTypes
+-- Tabla nueva pra catálogo de tipos de impuesto: IVA, aranceles, fees de envío, etc.
+- taxTypeId int auto-increment PK
+- name varchar(50) NOT NULL UNIQUE       -- IVA, Arancel importación, etc
+- description varchar(150) NOT NULL
+- appliesTo varchar(30) NOT NULL         -- SALE, IMPORT, SHIPPING
+- isActive boolean NOT NULL DEFAULT TRUE
+- createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+- employeeId int FK NOT NULL
 
 ## taxRates
-- taxRateId INT auto-increment PK
-- countryId INT FK NOT NULL
+- taxRateId int auto-increment PK
+- countryId int FK NOT NULL
+- taxTypeId int FK NOT NULL              -- qué tipo de impuesto es
 - rate DECIMAL(5,2) NOT NULL
-- validFrom DATE NOT NULL
-- validTo DATE
+- checksum varchar(64)                   
+- validFrom date NOT NULL
+- validTo date
 - isActive boolean NOT NULL DEFAULT TRUE
-- createdAt timestamp NOT NULL DEFAULT 
+- createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+- updatedAt timestamp
+- employeeId int FK NOT NULL
 
 ## currencies
-- currencyId auto-increment PK
-- symbol varchar(1) NOT NULL
+- currencyId int auto-increment PK
+- symbol varchar(5) NOT NULL
 - name varchar(50) NOT NULL
-- countryId FK NOT NULL
+- countryId int FK NOT NULL
+- isoCode char(3) NOT NULL UNIQUE   
 - createdAt timestamp NOT NULL
 - isActive boolean NOT NULL DEFAULT TRUE
-- employeeId FK NOT NULL
+- employeeId int FK NOT NULL
 
 ## exchangeRates
-- exchangeRateId auto-increment PK
-- fromCurrencyId FK NOT NULL
-- toCurrencyId FK NOT NULL
+-- Tanla que indica el valor actual/operativo
+- exchangeRateId int auto-increment PK
+- fromCurrencyId int FK NOT NULL
+- toCurrencyId int FK NOT NULL
 - rate DECIMAL(10,4) NOT NULL
 - createdAt timestamp NOT NULL
-- employeeId FK NOT NULL
+- employeeId int FK NOT NULL
 
 ## exchangeHistory
+-- Tabla que indica eñ histórico de cambios congelado para auditoría
 - exchangeHistoryId auto-increment PK
-- exchangeRateId FK NOT NULL
+- exchangeRateId int FK NOT NULL
 - start DATETIME NOT NULL
 - end DATETIME
-- fromCurrencyId FK NOT NULL
-- toCurrencyId FK NOT NULL
+- fromCurrencyId int FK NOT NULL
+- toCurrencyId int FK NOT NULL
 - rate DECIMAL(10,4) NOT NULL
 - createdAt timestamp NOT NULL
-- employeeId FK NOT NULL
+- employeeId int FK NOT NULL
 
 ## marketingFocus
-- marketingFocusId auto-increment PK
-- name varchar(50) UNIQUE
-- createdAt timestamp NOT NULL
-- employeeId FK NOT NULL
+- marketingFocusId int auto-increment PK
+- name varchar(100) NOT NULL UNIQUE
+- description varchar(250) NOT NULL          
+- targetAudience varchar(150)            
+- isActive boolean NOT NULL DEFAULT TRUE
+- createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+- employeeId int FK NOT NULL
 
 ## websites
-- websiteId auto-increment PK
-- brandId FK NOT NULL
+- websiteId int auto-increment PK
+- brandId int FK NOT NULL
 - name varchar(100) NOT NULL UNIQUE
 - url varchar(250) NOT NULL UNIQUE
-- countryId FK NOT NULL
+- countryId int FK NOT NULL
+- configJson JSON NOT NULL               -- paleta, fuentes, layouts, etc
 - isActive boolean NOT NULL DEFAULT TRUE
-- createdAt timestamp NOT NULL
-- employeeId FK NOT NULL
+- createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+- updatedAt timestamp
+- employeeId int FK NOT NULL
 
 ## brands
-- brandId auto-increment PK
-- websiteId FK 
+- brandId int auto-increment PK
 - name varchar(100) NOT NULL
 - logoUrl varchar(250) NOT NULL
 - description varchar(300) NOT NULL
-- marketingFocusId FK NOT NULL
+- marketingFocusId int FK NOT NULL
 - isActive boolean NOT NULL DEFAULT TRUE
 - createdAt timestamp NOT NULL
-- employeeId FK NOT NULL
+- employeeId int FK NOT NULL
 
-## baseProducts      
-- baseProductId PK
-- productVariantId FK NOT NULL
-- name varchar(100) NOT NULL
+## productCategories
+- productCategoryId int auto-increment PK
+- name varchar(100) NOT NULL UNIQUE
+- description varchar(150) NOT NULL
 - isActive boolean NOT NULL DEFAULT TRUE
-- createdAt timestamp NOT NULL
-- employeeId FK NOT NULL
+- createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+- employeeId int FK NOT NULL
+
+## baseProducts
+- baseProductId int auto-increment PK
+- productCategoryId int FK NOT NULL             
+- name varchar(100) NOT NULL
+- description varchar(300)                       
+- isActive boolean NOT NULL DEFAULT TRUE
+- createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+- employeeId int FK NOT NULL
 
 ## commercialProducts
-- commercialProductId auto-increment PK
-- brandId FK NOT NULL
-- baseProductId FK NOT NULL
+- commercialProductId int auto-increment PK
+- brandId int FK NOT NULL
+- baseProductId int FK NOT NULL
+- productVariantId int NOT NULL          -- FK lógico hacia EtheriaGlobal.productVariants
 - name varchar(80) NOT NULL
-- label varchar(250) NOT NULL
+- label varchar(250) NOT NULL            -- nombre en etiqueta física para ese mercado
+- description varchar(300)               
+- productAttributes JSON                 -- aroma, ingredientes, etc
 - isActive boolean NOT NULL DEFAULT TRUE
-- createdAt timestamp NOT NULL
-- employeeId FK NOT NULL
+- createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+- updatedAt timestamp
+- employeeId int FK NOT NULL
 
 ## productPrices
-- productPriceId auto-increment PK
-- commercialProductId FK NOT NULL
-- currencyId FK NOT NULL
-- price DECIMAL(7,2) NOT NULL
-- employeeId FK NOT NULL
-- createdAt timestamp NOT NULL
-- employeeId FK NOT NULL
+- productPriceId int auto-increment PK
+- commercialProductId int FK NOT NULL
+- websiteId int FK NOT NULL              -- precio específico por sitio web
+- currencyId int FK NOT NULL
+- price DECIMAL(10,2) NOT NULL
+- validFrom date NOT NULL                -- inicio de vigencia del precio
+- validTo date                           -- NULL = precio activo actualmente
+- isActive boolean NOT NULL DEFAULT TRUE
+- createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+- employeeId int FK NOT NULL
 
 ## customers
-- customerId auto-increment PK
+- customerId int auto-increment PK
 - firstName varchar(50) NOT NULL
 - lastName varchar(100) NOT NULL
 - email varchar(80) UNIQUE NOT NULL
-- passwordHash varchar(255) NOT NULL
+- passwordHash varbinary(255) NOT NULL
 - phone varchar(15)
-- addressId FK NOT NULL
-- createdAt DATETIME NOT NULL
 - isActive boolean NOT NULL DEFAULT TRUE
+- createdAt datetime NOT NULL DEFAULT CURRENT_TIMESTAMP
+
+## customerAddresses
+-- Tabla nueva para que un cliente puede tener N direcciones
+- customerAddressId int auto-increment PK
+- customerId int FK NOT NULL
+- addressId int FK NOT NULL
+- isDefault boolean NOT NULL DEFAULT FALSE
+- createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 
 ## orderStatuses
-- orderStatusId auto-increment PK
+- orderStatusId int auto-increment PK
 - name varchar(30) NOT NULL UNIQUE
 - description varchar(100) NOT NULL
 - isActive boolean NOT NULL DEFAULT TRUE
 
 ## orders
-- orderId auto-increment PK
-- websiteId FK NOT NULL
-- customerId FK NOT NULL
-- addressId FK NOT NULL
-- currencyId FK NOT NULL
-- orderStatusId FK NOT NULL
-- orderDate timestamp NOT NULL DEFAULT 
-- subtotal DECIMAL(7,2) NOT NULL
-- taxAmount DECIMAL(7,2) NOT NULL DEFAULT 0 
-- shippingCost DECIMAL(7,2) NOT NULL DEFAULT 0
-- total DECIMAL(7,2) NOT NULL
-- exchangeRateUsed DECIMAL(10,6)
-- createdAt DATETIME NOT NULL DEFAULT
+- orderId int auto-increment PK
+- websiteId int FK NOT NULL
+- customerId int FK NOT NULL
+- addressId int FK NOT NULL
+- currencyId int FK NOT NULL
+- orderStatusId int FK NOT NULL
+- exchangeRateId int FK NOT NULL         -- reemplaza el campo que quedaba suelto de exchangeRateUsed
+- orderDate timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+- subtotal DECIMAL(10,2) NOT NULL
+- taxAmount DECIMAL(10,2) NOT NULL DEFAULT 0
+- shippingCost DECIMAL(10,2) NOT NULL DEFAULT 0
+- total DECIMAL(10,2) NOT NULL
 - isActive boolean NOT NULL DEFAULT TRUE
+- createdAt datetime NOT NULL DEFAULT CURRENT_TIMESTAMP
+
+## orderTaxes
+-- Tabla nueva pra la lista detallada de los impuestos aplicados a cada orden
+- orderTaxId int auto-increment PK
+- orderId int FK NOT NULL
+- taxTypeId int FK NOT NULL
+- taxRateId int FK NOT NULL
+- taxableAmount DECIMAL(10,2) NOT NULL
+- taxAmount DECIMAL(10,2) NOT NULL
+- createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 
 ## orderDetails
-- orderDetailId auto-increment PK
-- orderId FK NOT NULL
-- commercialProductId FK NOT NULL
-- quantity NOT NULL
-- unitPrice DECIMAL(7,2) NOT NULL
+- orderDetailId int auto-increment PK
+- orderId int FK NOT NULL
+- commercialProductId int FK NOT NULL
+- quantity int NOT NULL
+- unitPrice DECIMAL(10,2) NOT NULL
+- lineSubtotal DECIMAL(10,2) NOT NULL  -- quantity * unitPrice al momento de la compra
+- createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+- employeeId int FK NOT NULL
 
 ## shippingStatuses
-- shippingStatusId auto-increment PK
+- shippingStatusId int auto-increment PK
 - name varchar(30) NOT NULL UNIQUE
 - description varchar(100) NOT NULL
 - isActive boolean NOT NULL DEFAULT TRUE
 
 ## couriers
-- courierId auto-increment PK
+- courierId int auto-increment PK
 - name varchar(50) NOT NULL
 - phone varchar(50)
 - email varchar(100) NOT NULL
-- countryId FK NOT NULL 
+- countryId int FK NOT NULL 
 - isActive boolean NOT NULL DEFAULT TRUE
-- createdAt DATETIME NOT NULL DEFAULT
-- employeeId FK NOT NULL
+- createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+- employeeId int FK NOT NULL
 
 ## shipments
-- shipmentId auto-increment PK
-- orderId FK NOT NULL
-- courierId FK NOT NULL
+- shipmentId int auto-increment PK
+- orderId int FK NOT NULL
+- courierId int FK NOT NULL
 - trackingCode varchar(50) UNIQUE NOT NULL
-- shippingStatusId FK NOT NULL
+- shippingStatusId int FK NOT NULL
 - shippedAt DATETIME
 - deliveredAt DATETIME
 - isActive boolean NOT NULL DEFAULT TRUE
-- createdAt DATETIME NOT NULL DEFAULT
-- employeeId FK NOT NULL
-
-## processLogTypes
-- processLogTypeId auto-increment PK
-- name varchar(30) NOT NULL UNIQUE
-- description varchar(100) NOT NULL
-- isActive boolean NOT NULL DEFAULT TRUE
+- createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+- employeeId int FK NOT NULL
 
 ## processTypes
 - processTypeId INT auto-increment PK
@@ -208,9 +263,48 @@ Contexto: Dynamic Brands es una empresa que usa IA para hacer sitios de e-commer
 - isActive boolean NOT NULL DEFAULT TRUE
 
 ## processLogs
-- processLogId INT auto-increment PK
-- processLogTypeId FK NOT NULL
-- processTypeId FK NOT NULL
-- description varchar(100) NOT NULL
-- createdAt DATETIME NOT NULL
-- employeeId FK NOT NULL
+- processLogId int auto-increment PK
+- processTypeId int FK NOT NULL
+- logFunction varchar(10) NOT NULL          -- INFO, WARNING, ERROR, etc
+- message TEXT NOT NULL
+- isError boolean NOT NULL DEFAULT FALSE
+- executionTimeMs int
+- createdAt datetime NOT NULL DEFAULT CURRENT_TIMESTAMP
+- employeeId int FK NOT NULL
+
+-- Para responder a "faltan transacciones  y pagos, y los movimientos de inventario no se si estan aqui o en la otra db, apenas la voy a ver. " se agregaron las siguientes tablas:
+
+## paymentMethods
+- paymentMethodId int auto-increment PK
+- name varchar(50) NOT NULL UNIQUE       -- Tarjeta crédito, PayPal, Transferencia, etc
+- isActive boolean NOT NULL DEFAULT TRUE
+- createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+
+## payments
+-- Transacciones de pago del cliente final por una orden.
+- paymentId int auto-increment PK
+- orderId int FK NOT NULL
+- paymentMethodId int FK NOT NULL
+- currencyId int FK NOT NULL
+- exchangeRateId int FK NOT NULL
+- amount DECIMAL(10,2) NOT NULL          -- monto en moneda local del cliente
+- amountUsd DECIMAL(10,2) NOT NULL       -- monto convertido a USD para análisis unificado
+- paymentDate datetime NOT NULL
+- status varchar(30) NOT NULL            
+- transactionReference varchar(100)      -- código externo del procesador de pagos
+- createdAt datetime NOT NULL DEFAULT CURRENT_TIMESTAMP
+- employeeId int FK NOT NULL
+
+## userGroups
+- groupId int auto-increment PK
+- name varchar(50) NOT NULL UNIQUE
+- description varchar(150) NOT NULL
+- isActive boolean NOT NULL DEFAULT TRUE
+- createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+
+## employeeGroups
+- employeeGroupId int auto-increment PK
+- employeeId int FK NOT NULL
+- groupId int FK NOT NULL
+- assignedAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+- assignedBy int FK NOT NULL             -- empleado que hizo la asignación
