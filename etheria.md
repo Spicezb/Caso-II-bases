@@ -45,11 +45,10 @@ Xavier Cespedes Alvarado, 2025102887
 - createdAt timestamp NOT NULL 
 - employeeId int FK NOT NULL
 
+## productVariants
 -- Respuesta al profe de: "sigo con duda de que es esto"
 -- De acuerdo a nosotros, la logica de la tabla productVariants es que pueden existir distintas variantes de un producto. Ejemplo:
 -- Tenemos un producto como "Aceite de lavanda" puede importarse en varias presentaciones: 30ml, 60ml, 100ml. Lo que entra al inventario, se mueve en bodega y se etiqueta con marca blanca en Dynamic Brands es siempre la variante, no el producto generico.
-
-## productVariants
 - productVariantId serial PK
 - productId int FK NOT NULL
 - description varchar(200) NOT NULL
