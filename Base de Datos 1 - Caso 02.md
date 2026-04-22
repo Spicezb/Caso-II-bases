@@ -265,7 +265,7 @@ Contexto: Dynamic Brands es una empresa que usa IA para hacer sitios de e-commer
 ## processLogs
 - processLogId int auto-increment PK
 - processTypeId int FK NOT NULL
-- logFunction varchar(10) NOT NULL          -- INFO, WARNING, ERROR, etc
+- logLevel varchar(10) NOT NULL          -- INFO, WARNING, ERROR, etc
 - message TEXT NOT NULL
 - isError boolean NOT NULL DEFAULT FALSE
 - executionTimeMs int
@@ -280,6 +280,12 @@ Contexto: Dynamic Brands es una empresa que usa IA para hacer sitios de e-commer
 - isActive boolean NOT NULL DEFAULT TRUE
 - createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 
+## paymentStatuses
+- paymentStatusId int auto-increment PK
+- name varchar(30) NOT NULL UNIQUE       -- "PENDING", "CONFIRMED", "FAILED", "REFUNDED"
+- description varchar(100) NOT NULL
+- isActive boolean NOT NULL DEFAULT TRUE
+
 ## payments
 -- Transacciones de pago del cliente final por una orden.
 - paymentId int auto-increment PK
@@ -290,7 +296,7 @@ Contexto: Dynamic Brands es una empresa que usa IA para hacer sitios de e-commer
 - amount DECIMAL(10,2) NOT NULL          -- monto en moneda local del cliente
 - amountUsd DECIMAL(10,2) NOT NULL       -- monto convertido a USD para análisis unificado
 - paymentDate datetime NOT NULL
-- status varchar(30) NOT NULL            
+- paymentStatusId int FK NOT NULL         
 - transactionReference varchar(100)      -- código externo del procesador de pagos
 - createdAt datetime NOT NULL DEFAULT CURRENT_TIMESTAMP
 - employeeId int FK NOT NULL
