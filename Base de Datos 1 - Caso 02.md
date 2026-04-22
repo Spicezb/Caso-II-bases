@@ -199,7 +199,7 @@ Contexto: Dynamic Brands es una empresa que usa IA para hacer sitios de e-commer
 - addressId int FK NOT NULL
 - currencyId int FK NOT NULL
 - orderStatusId int FK NOT NULL
-- exchangeRateId int FK NOT NULL         -- reemplaza el campo que quedaba suelto de exchangeRateUsed
+- exchangeRateId int FK NOT NULL       
 - orderDate timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 - subtotal DECIMAL(10,2) NOT NULL
 - taxAmount DECIMAL(10,2) NOT NULL DEFAULT 0
