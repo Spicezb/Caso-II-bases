@@ -114,6 +114,10 @@ markets_db.columns = markets_db.columns.str.lower()
 dates_db.columns = dates_db.columns.str.lower()
 
 # Relacionar resumen con IDs del DW
+df_summary = df_summary.rename(columns={
+    "countryid": "countryname"
+})
+
 df_final = df_summary.merge(products_db, on="categoryname")
 df_final = df_final.merge(markets_db, on=["countryname", "brandname"])
 df_final = df_final.merge(dates_db, on=["month", "monthname", "year"])
@@ -133,6 +137,15 @@ df_insert = df_final[[
     "revenueusd": "totalrevenueusd",
     "profitusd": "totalprofitusd"
 })
+
+print("df_sales:", len(df_sales))
+print("df_costs:", len(df_costs))
+print("df merge:", len(df))
+print("df_summary:", len(df_summary))
+print("df_final:", len(df_final))
+print("df_insert:", len(df_insert))
+
+print(df_insert.head())
 
 df_insert.to_sql("summaries", dw_engine, if_exists="append", index=False)
 
