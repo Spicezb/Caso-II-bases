@@ -140,4 +140,4 @@ df_insert = df_final[[
 
 df_insert.to_sql("summaries", dw_engine, if_exists="append", index=False)
 
-print("ETL FINAL FUNCIONANDO 💣")
+print("ETL FINAL FUNCIONANDO")
