@@ -908,7 +908,7 @@ DECLARE
 	cosmeticaCategoryID int;
 	aromaterapiaCategoryID int;
 
-	warehouseID int;
+	warehouseIDSaved int;
 	locationID int;
 
 	supplierAmazoniaID int;
@@ -1009,18 +1009,18 @@ BEGIN
 	-- Warehouse y ubicación
 	CALL spInsertWarehouse('HUB Caribe Nicaragua', adminID);
 
-	SELECT warehouseId INTO warehouseID
+	SELECT warehouseId INTO warehouseIDSaved
 	FROM warehouses
 	WHERE name = 'HUB Caribe Nicaragua';
 
-	CALL spInsertWarehouseLocation(warehouseID, 'A', '01', '01', adminID);
+	CALL spInsertWarehouseLocation(warehouseIDSaved, 'A', '01', '01', adminID);
 
-	SELECT locationId INTO locationID
-	FROM warehouseLocations
-	WHERE warehouseId = warehouseID
-	  AND zone = 'A'
-	  AND aisle = '01'
-	  AND shelf = '01';
+	SELECT wl.locationId INTO locationID
+	FROM warehouseLocations wl
+	WHERE wl.warehouseId = warehouseIDSaved
+  	AND wl.zone = 'A'
+  	AND wl.aisle = '01'
+ 	AND wl.shelf = '01';
 
 	-- Proveedores, uno por país
 	CALL insertSupplier('Proveedor Natural Costa Rica', costaRicaID, 'cr@etheria.com', adminID);
@@ -1049,16 +1049,37 @@ BEGIN
 	-- MX: 81-100
 	CALL spSeedProductsByCountry('MX', cosmeticaCategoryID, 81, 100, adminID);
 
-	-- Tomamos dos variantes para registrar una importación de prueba
+	-- Tomamos dos variantes reales para registrar una importación de prueba
 	SELECT productVariantId INTO variantOneID
 	FROM productVariants
 	WHERE sku = 'CO-PROD-041'
 	LIMIT 1;
-
+	
 	SELECT productVariantId INTO variantTwoID
 	FROM productVariants
 	WHERE sku = 'CO-PROD-042'
 	LIMIT 1;
+	
+	-- Si por algún motivo no existen esos SKU, toma las primeras dos variantes existentes
+	IF variantOneID IS NULL THEN
+		SELECT productVariantId INTO variantOneID
+		FROM productVariants
+		ORDER BY productVariantId
+		LIMIT 1;
+	END IF;
+	
+	IF variantTwoID IS NULL THEN
+		SELECT productVariantId INTO variantTwoID
+		FROM productVariants
+		ORDER BY productVariantId
+		OFFSET 1
+		LIMIT 1;
+	END IF;
+	
+	-- Validación final
+	IF variantOneID IS NULL OR variantTwoID IS NULL THEN
+		RAISE EXCEPTION 'No existen variantes suficientes para registrar la importación';
+	END IF;
 
 	-- Importación de prueba
 	CALL spRegisterImportJson(
@@ -1073,7 +1094,7 @@ BEGIN
 				"exchangeRateId": ' || usdRateID || ',
 				"unitCostLocal": 5.50,
 				"unitCostUsd": 5.50,
-				"warehouseId": ' || warehouseID || ',
+				"warehouseId": ' || warehouseIDSaved || ',
 				"locationId": ' || locationID || '
 			},
 			{
@@ -1083,7 +1104,7 @@ BEGIN
 				"exchangeRateId": ' || usdRateID || ',
 				"unitCostLocal": 8.20,
 				"unitCostUsd": 8.20,
-				"warehouseId": ' || warehouseID || ',
+				"warehouseId": ' || warehouseIDSaved || ',
 				"locationId": ' || locationID || '
 			}
 		]'
@@ -1108,7 +1129,3 @@ BEGIN
 	);
 END;
 $$;
-
-
-
-
