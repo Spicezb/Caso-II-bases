@@ -1,7 +1,37 @@
 USE DynamicBrandsRetail;
 
+--esto lo ponemos para evitar errores por repeticion
+DROP PROCEDURE IF EXISTS spRegisterDynamic;
+DROP PROCEDURE IF EXISTS spInsertEmployee;
+DROP PROCEDURE IF EXISTS spInsertCountry;
+DROP PROCEDURE IF EXISTS spInsertProcessType;
+DROP PROCEDURE IF EXISTS spInsertCity;
+DROP PROCEDURE IF EXISTS spInsertAddress;
+DROP PROCEDURE IF EXISTS spInsertCurrency;
+DROP PROCEDURE IF EXISTS spInsertExchangeRate;
+DROP PROCEDURE IF EXISTS spInsertMarketingFocus;
+DROP PROCEDURE IF EXISTS spInsertBrand;
+DROP PROCEDURE IF EXISTS spInsertWebsite;
+DROP PROCEDURE IF EXISTS spInsertProductCategory;
+DROP PROCEDURE IF EXISTS spInsertBaseProduct;
+DROP PROCEDURE IF EXISTS spInsertOrderStatus;
+DROP PROCEDURE IF EXISTS spInsertPaymentMethod;
+DROP PROCEDURE IF EXISTS spInsertPaymentStatus;
+DROP PROCEDURE IF EXISTS spInsertShippingStatus;
+DROP PROCEDURE IF EXISTS spInsertCourier;
+DROP PROCEDURE IF EXISTS spInsertTaxType;
+DROP PROCEDURE IF EXISTS spInsertTaxRate;
+DROP PROCEDURE IF EXISTS spInsertCustomer;
+DROP PROCEDURE IF EXISTS spInsertCustomerAddress;
+DROP PROCEDURE IF EXISTS spInsertCommercialProductsJson;
+DROP PROCEDURE IF EXISTS spRegisterOrderJson;
+DROP PROCEDURE IF EXISTS spRegisterPayment;
+DROP PROCEDURE IF EXISTS spRegisterShipment;
+DROP PROCEDURE IF EXISTS spSeedDynamicBrands;
+
 -- Implemente un SP independiente que registre cada paso ejecutado en las tablas de destino, 
 -- este SP es llamado por los otros SP de inserción de datos.
+DROP PROCEDURE IF EXISTS spRegisterDynamic;
 DELIMITER $$
 CREATE PROCEDURE spRegisterDynamic(
 	processTypeName VARCHAR(50),
@@ -41,8 +71,8 @@ DELIMITER ;
 
 -- sp que son sencillos
 -- insertar empleados
+DROP PROCEDURE IF EXISTS spInsertEmployee;
 DELIMITER $$
-
 CREATE PROCEDURE spInsertEmployee(
 	fullNameData VARCHAR(150), emailData VARCHAR(80), passwordData VARBINARY(255))
 BEGIN
@@ -651,8 +681,16 @@ BEGIN
 
 	DECLARE EXIT HANDLER FOR SQLEXCEPTION
 	BEGIN
-		CALL spRegisterDynamic('spInsertCommercialProductsJson','ERROR','Error insertando productos comerciales',TRUE,0,employeeInChargeID);
 		ROLLBACK;
+		CALL spRegisterDynamic(
+			'spInsertCommercialProductsJson',
+			'ERROR',
+			'Error insertando productos comerciales',
+			TRUE,
+			0,
+			employeeInChargeID
+		);
+		RESIGNAL;
 	END;
 
 	START TRANSACTION;
@@ -988,7 +1026,10 @@ DELIMITER ;
 
 -- orquestador que llama todos los sp anteriores para la insercion de datos}
 -- orquestador final DynamicBrands
+DROP PROCEDURE IF EXISTS spSeedDynamicBrands;
+
 DELIMITER $$
+
 CREATE PROCEDURE spSeedDynamicBrands()
 BEGIN
 	DECLARE adminID INT;
@@ -1026,15 +1067,21 @@ BEGIN
 	DECLARE customerID INT;
 	DECLARE orderID INT;
 
-	-- Bootstrap mínimo
+	-- persona administradora de los empleados
 	INSERT IGNORE INTO employees(fullName, email, passwordHash, isActive, createdAt)
 	VALUES('Admin Sistema', 'admin@dynamicbrands.com', 'hash123', TRUE, NOW());
 
-	SELECT employeeId INTO adminID
-	FROM employees
-	WHERE email = 'admin@dynamicbrands.com'
+	SELECT e.employeeId INTO adminID
+	FROM employees e
+	WHERE e.email = 'admin@dynamicbrands.com'
+	ORDER BY e.employeeId DESC
 	LIMIT 1;
 
+	IF adminID IS NULL THEN
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'No se pudo obtener adminID';
+	END IF;
+
+	-- Insertar tipos de procesos 
 	INSERT IGNORE INTO processTypes(name, description, isActive)
 	VALUES
 	('spInsertCountry','Inserta países',TRUE),
@@ -1062,26 +1109,60 @@ BEGIN
 	('spRegisterShipment','Registra envíos',TRUE),
 	('spSeedDynamicBrands','Orquestador DynamicBrands',TRUE);
 
-	-- Países
+	-- insertar los paises
 	CALL spInsertCountry('Costa Rica', 'CR', adminID);
-	CALL spInsertCountry('Nicaragua', 'NI', adminID);
-	CALL spInsertCountry('Colombia', 'CO', adminID);
-	CALL spInsertCountry('Peru', 'PE', adminID);
-	CALL spInsertCountry('Mexico', 'MX', adminID);
+	CALL spInsertCountry('Nicaragua',  'NI', adminID);
+	CALL spInsertCountry('Colombia',   'CO', adminID);
+	CALL spInsertCountry('Peru',       'PE', adminID);
+	CALL spInsertCountry('Mexico',     'MX', adminID);
 
-	SELECT countryId INTO costaRicaID FROM countries WHERE isoCode = 'CR' LIMIT 1;
-	SELECT countryId INTO nicaraguaID FROM countries WHERE isoCode = 'NI' LIMIT 1;
-	SELECT countryId INTO colombiaID FROM countries WHERE isoCode = 'CO' LIMIT 1;
-	SELECT countryId INTO peruID FROM countries WHERE isoCode = 'PE' LIMIT 1;
-	SELECT countryId INTO mexicoID FROM countries WHERE isoCode = 'MX' LIMIT 1;
+	SELECT c.countryId INTO costaRicaID
+	FROM countries c
+	WHERE c.isoCode = 'CR'
+	ORDER BY c.countryId DESC
+	LIMIT 1;
 
-	-- Ciudad y dirección
+	SELECT c.countryId INTO nicaraguaID
+	FROM countries c
+	WHERE c.isoCode = 'NI'
+	ORDER BY c.countryId DESC
+	LIMIT 1;
+
+	SELECT c.countryId INTO colombiaID
+	FROM countries c
+	WHERE c.isoCode = 'CO'
+	ORDER BY c.countryId DESC
+	LIMIT 1;
+
+	SELECT c.countryId INTO peruID
+	FROM countries c
+	WHERE c.isoCode = 'PE'
+	ORDER BY c.countryId DESC
+	LIMIT 1;
+
+	SELECT c.countryId INTO mexicoID
+	FROM countries c
+	WHERE c.isoCode = 'MX'
+	ORDER BY c.countryId DESC
+	LIMIT 1;
+
+	IF costaRicaID IS NULL OR nicaraguaID IS NULL OR colombiaID IS NULL
+	   OR peruID IS NULL OR mexicoID IS NULL THEN
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'No se pudieron obtener los countryId';
+	END IF;
+
+	-- colocar ciudad y direccion
 	CALL spInsertCity(costaRicaID, 'San José', adminID);
 
-	SELECT cityId INTO sanJoseID
-	FROM cities
-	WHERE name = 'San José'
+	SELECT ci.cityId INTO sanJoseID
+	FROM cities ci
+	WHERE ci.name = 'San José'
+	ORDER BY ci.cityId DESC
 	LIMIT 1;
+
+	IF sanJoseID IS NULL THEN
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'No se pudo obtener sanJoseID';
+	END IF;
 
 	CALL spInsertAddress(
 		sanJoseID,
@@ -1091,31 +1172,54 @@ BEGIN
 		adminID
 	);
 
-	SELECT addressId INTO addressID
-	FROM addresses
-	WHERE cityId = sanJoseID
+	SELECT a.addressId INTO addressID
+	FROM addresses a
+	ORDER BY a.addressId DESC
 	LIMIT 1;
 
-	-- Monedas
-	CALL spInsertCurrency('₡', 'Costa Rican Colon', costaRicaID, 'CRC', adminID);
+	IF addressID IS NULL THEN
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'No se pudo obtener addressID';
+	END IF;
+
+	-- insertar las monedas por pais
+	CALL spInsertCurrency('₡',  'Costa Rican Colon',  costaRicaID, 'CRC', adminID);
 	CALL spInsertCurrency('C$', 'Nicaraguan Cordoba', nicaraguaID, 'NIO', adminID);
-	CALL spInsertCurrency('$', 'Colombian Peso', colombiaID, 'COP', adminID);
-	CALL spInsertCurrency('S/', 'Peruvian Sol', peruID, 'PEN', adminID);
-	CALL spInsertCurrency('$', 'Mexican Peso', mexicoID, 'MXN', adminID);
-	CALL spInsertCurrency('$', 'US Dollar', costaRicaID, 'USD', adminID);
+	CALL spInsertCurrency('$',  'Colombian Peso',     colombiaID,  'COP', adminID);
+	CALL spInsertCurrency('S/', 'Peruvian Sol',       peruID,      'PEN', adminID);
+	CALL spInsertCurrency('$',  'Mexican Peso',       mexicoID,    'MXN', adminID);
+	CALL spInsertCurrency('$',  'US Dollar',          costaRicaID, 'USD', adminID);
 
-	SELECT currencyId INTO crcID FROM currencies WHERE isoCode = 'CRC' LIMIT 1;
-	SELECT currencyId INTO usdID FROM currencies WHERE isoCode = 'USD' LIMIT 1;
+	SELECT cu.currencyId INTO crcID
+	FROM currencies cu
+	WHERE cu.isoCode = 'CRC'
+	ORDER BY cu.currencyId DESC
+	LIMIT 1;
 
+	SELECT cu.currencyId INTO usdID
+	FROM currencies cu
+	WHERE cu.isoCode = 'USD'
+	ORDER BY cu.currencyId DESC
+	LIMIT 1;
+
+	IF crcID IS NULL OR usdID IS NULL THEN
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'No se pudieron obtener crcID o usdID';
+	END IF;
+
+	-- insertar el tipo de cambio
 	CALL spInsertExchangeRate(usdID, crcID, 520.0000, adminID);
 
-	SELECT exchangeRateId INTO exchangeRateID
-	FROM exchangeRates
-	WHERE fromCurrencyId = usdID
-	  AND toCurrencyId = crcID
+	SELECT er.exchangeRateId INTO exchangeRateID
+	FROM exchangeRates er
+	WHERE er.fromCurrencyId = usdID
+	  AND er.toCurrencyId   = crcID
+	ORDER BY er.exchangeRateId DESC
 	LIMIT 1;
 
-	-- Marketing y marca
+	IF exchangeRateID IS NULL THEN
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'No se pudo obtener exchangeRateID';
+	END IF;
+
+	-- insertar marca y el focus deseado
 	CALL spInsertMarketingFocus(
 		'Wellness Premium',
 		'Productos naturales de alta gama con enfoque saludable',
@@ -1123,10 +1227,15 @@ BEGIN
 		adminID
 	);
 
-	SELECT marketingFocusId INTO focusID
-	FROM marketingFocus
-	WHERE name = 'Wellness Premium'
+	SELECT mf.marketingFocusId INTO focusID
+	FROM marketingFocus mf
+	WHERE mf.name = 'Wellness Premium'
+	ORDER BY mf.marketingFocusId DESC
 	LIMIT 1;
+
+	IF focusID IS NULL THEN
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'No se pudo obtener focusID';
+	END IF;
 
 	CALL spInsertBrand(
 		'NatureAI',
@@ -1136,35 +1245,51 @@ BEGIN
 		adminID
 	);
 
-	SELECT brandId INTO brandID
-	FROM brands
-	WHERE name = 'NatureAI'
+	SELECT b.brandId INTO brandID
+	FROM brands b
+	WHERE b.name = 'NatureAI'
+	ORDER BY b.brandId DESC
 	LIMIT 1;
 
-	-- 9 sitios web dinámicos
-	CALL spInsertWebsite(brandID, 'PuraVida Wellness', 'https://puravidawellness.cr', costaRicaID, JSON_OBJECT('theme','green','market','CR'), adminID);
-	CALL spInsertWebsite(brandID, 'Caribe Natural NI', 'https://caribenatural.ni', nicaraguaID, JSON_OBJECT('theme','blue','market','NI'), adminID);
-	CALL spInsertWebsite(brandID, 'Andes Glow CO', 'https://andesglow.co', colombiaID, JSON_OBJECT('theme','gold','market','CO'), adminID);
-	CALL spInsertWebsite(brandID, 'Sol Herbal PE', 'https://solherbal.pe', peruID, JSON_OBJECT('theme','orange','market','PE'), adminID);
-	CALL spInsertWebsite(brandID, 'Azteca Wellness MX', 'https://aztecawellness.mx', mexicoID, JSON_OBJECT('theme','red','market','MX'), adminID);
-	CALL spInsertWebsite(brandID, 'BioSkin Costa Rica', 'https://bioskin.cr', costaRicaID, JSON_OBJECT('theme','white','market','CR'), adminID);
-	CALL spInsertWebsite(brandID, 'Nica Herbal Shop', 'https://nicaherbalshop.ni', nicaraguaID, JSON_OBJECT('theme','green','market','NI'), adminID);
-	CALL spInsertWebsite(brandID, 'Colombia Natural Care', 'https://colombianaturalcare.co', colombiaID, JSON_OBJECT('theme','purple','market','CO'), adminID);
-	CALL spInsertWebsite(brandID, 'Lima Wellness Store', 'https://limawellness.pe', peruID, JSON_OBJECT('theme','beige','market','PE'), adminID);
+	IF brandID IS NULL THEN
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'No se pudo obtener brandID';
+	END IF;
 
-	SELECT websiteId INTO websiteID
-	FROM websites
-	WHERE name = 'PuraVida Wellness'
+	-- 9 sitios web de acuerdo al profe 
+	CALL spInsertWebsite(brandID, 'PuraVida Wellness',     'https://puravidawellness.cr',    costaRicaID, JSON_OBJECT('theme','green', 'market','CR'), adminID);
+	CALL spInsertWebsite(brandID, 'Caribe Natural NI',     'https://caribenatural.ni',       nicaraguaID, JSON_OBJECT('theme','blue',  'market','NI'), adminID);
+	CALL spInsertWebsite(brandID, 'Andes Glow CO',         'https://andesglow.co',           colombiaID,  JSON_OBJECT('theme','gold',  'market','CO'), adminID);
+	CALL spInsertWebsite(brandID, 'Sol Herbal PE',         'https://solherbal.pe',           peruID,      JSON_OBJECT('theme','orange','market','PE'), adminID);
+	CALL spInsertWebsite(brandID, 'Azteca Wellness MX',    'https://aztecawellness.mx',      mexicoID,    JSON_OBJECT('theme','red',   'market','MX'), adminID);
+	CALL spInsertWebsite(brandID, 'BioSkin Costa Rica',    'https://bioskin.cr',             costaRicaID, JSON_OBJECT('theme','white', 'market','CR'), adminID);
+	CALL spInsertWebsite(brandID, 'Nica Herbal Shop',      'https://nicaherbalshop.ni',      nicaraguaID, JSON_OBJECT('theme','green', 'market','NI'), adminID);
+	CALL spInsertWebsite(brandID, 'Colombia Natural Care', 'https://colombianaturalcare.co', colombiaID,  JSON_OBJECT('theme','purple','market','CO'), adminID);
+	CALL spInsertWebsite(brandID, 'Lima Wellness Store',   'https://limawellness.pe',        peruID,      JSON_OBJECT('theme','beige', 'market','PE'), adminID);
+
+	SELECT w.websiteId INTO websiteID
+	FROM websites w
+	WHERE w.name = 'PuraVida Wellness'
+	ORDER BY w.websiteId DESC
 	LIMIT 1;
 
-	-- Producto base y producto comercial
+	IF websiteID IS NULL THEN
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'No se pudo obtener websiteID';
+	END IF;
+
+	-- insertar la categoria del producto
 	CALL spInsertProductCategory('Aceites', 'Aceites esenciales y medicinales', adminID);
 
-	SELECT productCategoryId INTO categoryID
-	FROM productCategories
-	WHERE name = 'Aceites'
+	SELECT pc.productCategoryId INTO categoryID
+	FROM productCategories pc
+	WHERE pc.name = 'Aceites'
+	ORDER BY pc.productCategoryId DESC
 	LIMIT 1;
 
+	IF categoryID IS NULL THEN
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'No se pudo obtener categoryID';
+	END IF;
+
+	-- insertar el producto base 
 	CALL spInsertBaseProduct(
 		categoryID,
 		'Aceite Natural Premium',
@@ -1172,50 +1297,108 @@ BEGIN
 		adminID
 	);
 
-	SELECT baseProductId INTO baseProductID
-	FROM baseProducts
-	WHERE name = 'Aceite Natural Premium'
+	SELECT bp.baseProductId INTO baseProductID
+	FROM baseProducts bp
+	WHERE bp.name = 'Aceite Natural Premium'
+	ORDER BY bp.baseProductId DESC
 	LIMIT 1;
 
+	IF baseProductID IS NULL THEN
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'No se pudo obtener baseProductID';
+	END IF;
+
+	-- productos comerciales
+	-- productVariantId 41 y 42 provienen de Etheria
 	CALL spInsertCommercialProductsJson(
 		JSON_ARRAY(
 			JSON_OBJECT(
-				'brandId', brandID,
-				'baseProductId', baseProductID,
-				'productVariantId', 1,
-				'name', 'Aceite Premium NatureAI',
-				'label', 'Aceite esencial premium',
-				'description', 'Producto natural de alta gama',
+				'brandId',           brandID,
+				'baseProductId',     baseProductID,
+				'productVariantId',  41,
+				'name',              'Aceite Premium NatureAI',
+				'label',             'Aceite esencial premium',
+				'description',       'Producto natural de alta gama',
 				'productAttributes', JSON_OBJECT('aroma','lavanda','benefit','relajación'),
-				'websiteId', websiteID,
-				'currencyId', crcID,
-				'price', 12950.00
+				'websiteId',         websiteID,
+				'currencyId',        crcID,
+				'price',             12950.00
+			),
+			JSON_OBJECT(
+				'brandId',           brandID,
+				'baseProductId',     baseProductID,
+				'productVariantId',  42,
+				'name',              'Aceite Premium NatureAI B',
+				'label',             'Aceite esencial premium B',
+				'description',       'Producto natural de alta gama B',
+				'productAttributes', JSON_OBJECT('aroma','menta','benefit','energía'),
+				'websiteId',         websiteID,
+				'currencyId',        crcID,
+				'price',             13950.00
 			)
 		),
 		adminID
 	);
 
-	SELECT commercialProductId INTO commercialProductID
-	FROM commercialProducts
-	WHERE name = 'Aceite Premium NatureAI'
+	SELECT cp.commercialProductId INTO commercialProductID
+	FROM commercialProducts cp
+	WHERE cp.name = 'Aceite Premium NatureAI'
+	ORDER BY cp.commercialProductId DESC
 	LIMIT 1;
 
-	-- Catálogos de orden, pago, envío e impuestos
-	CALL spInsertOrderStatus('Paid', 'Orden pagada', adminID);
-	CALL spInsertPaymentMethod('Tarjeta', adminID);
-	CALL spInsertPaymentStatus('Approved', 'Pago aprobado', adminID);
-	CALL spInsertShippingStatus('Prepared', 'Envío preparado', adminID);
-	CALL spInsertCourier('Correos Express', '2222-2222', 'courier@dynamicbrands.com', costaRicaID, adminID);
+	IF commercialProductID IS NULL THEN
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'No se pudo obtener commercialProductID';
+	END IF;
 
+	-- insertar parte de catalogos generales
+	CALL spInsertOrderStatus('Paid',      'Orden pagada',     adminID);
+	CALL spInsertPaymentMethod('Tarjeta',                     adminID);
+	CALL spInsertPaymentStatus('Approved', 'Pago aprobado',   adminID);
+	CALL spInsertShippingStatus('Prepared','Envío preparado', adminID);
+	CALL spInsertCourier('Correos Express', '2222-2222', 'courier@dynamicbrands.com', costaRicaID, adminID);
 	CALL spInsertTaxType('IVA', 'Impuesto al valor agregado', 'SALE', adminID);
 
-	SELECT orderStatusId INTO orderStatusID FROM orderStatuses WHERE name = 'Paid' LIMIT 1;
-	SELECT paymentMethodId INTO paymentMethodID FROM paymentMethods WHERE name = 'Tarjeta' LIMIT 1;
-	SELECT paymentStatusId INTO paymentStatusID FROM paymentStatuses WHERE name = 'Approved' LIMIT 1;
-	SELECT shippingStatusId INTO shippingStatusID FROM shippingStatuses WHERE name = 'Prepared' LIMIT 1;
-	SELECT courierId INTO courierID FROM couriers WHERE name = 'Correos Express' LIMIT 1;
-	SELECT taxTypeId INTO taxTypeID FROM taxTypes WHERE name = 'IVA' LIMIT 1;
+	SELECT os.orderStatusId INTO orderStatusID
+	FROM orderStatuses os
+	WHERE os.name = 'Paid'
+	ORDER BY os.orderStatusId DESC
+	LIMIT 1;
 
+	SELECT pm.paymentMethodId INTO paymentMethodID
+	FROM paymentMethods pm
+	WHERE pm.name = 'Tarjeta'
+	ORDER BY pm.paymentMethodId DESC
+	LIMIT 1;
+
+	SELECT ps.paymentStatusId INTO paymentStatusID
+	FROM paymentStatuses ps
+	WHERE ps.name = 'Approved'
+	ORDER BY ps.paymentStatusId DESC
+	LIMIT 1;
+
+	SELECT ss.shippingStatusId INTO shippingStatusID
+	FROM shippingStatuses ss
+	WHERE ss.name = 'Prepared'
+	ORDER BY ss.shippingStatusId DESC
+	LIMIT 1;
+
+	SELECT co.courierId INTO courierID
+	FROM couriers co
+	WHERE co.name = 'Correos Express'
+	ORDER BY co.courierId DESC
+	LIMIT 1;
+
+	SELECT tt.taxTypeId INTO taxTypeID
+	FROM taxTypes tt
+	WHERE tt.name = 'IVA'
+	ORDER BY tt.taxTypeId DESC
+	LIMIT 1;
+
+	IF orderStatusID IS NULL OR paymentMethodID IS NULL OR paymentStatusID IS NULL
+	   OR shippingStatusID IS NULL OR courierID IS NULL OR taxTypeID IS NULL THEN
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'No se pudo obtener algún ID de catálogos';
+	END IF;
+
+	-- insertar tasa de impuesto
 	CALL spInsertTaxRate(
 		costaRicaID,
 		taxTypeID,
@@ -1226,13 +1409,18 @@ BEGIN
 		adminID
 	);
 
-	SELECT taxRateId INTO taxRateID
-	FROM taxRates
-	WHERE countryId = costaRicaID
-	  AND taxTypeId = taxTypeID
+	SELECT tr.taxRateId INTO taxRateID
+	FROM taxRates tr
+	WHERE tr.countryId = costaRicaID
+	  AND tr.taxTypeId = taxTypeID
+	ORDER BY tr.taxRateId DESC
 	LIMIT 1;
 
-	-- Cliente
+	IF taxRateID IS NULL THEN
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'No se pudo obtener taxRateID';
+	END IF;
+
+	-- registrar cliente
 	CALL spInsertCustomer(
 		'Carlos',
 		'Ramírez',
@@ -1242,10 +1430,15 @@ BEGIN
 		adminID
 	);
 
-	SELECT customerId INTO customerID
-	FROM customers
-	WHERE email = 'carlos@test.com'
+	SELECT cu.customerId INTO customerID
+	FROM customers cu
+	WHERE cu.email = 'carlos@test.com'
+	ORDER BY cu.customerId DESC
 	LIMIT 1;
+
+	IF customerID IS NULL THEN
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'No se pudo obtener customerID';
+	END IF;
 
 	CALL spInsertCustomerAddress(
 		customerID,
@@ -1254,7 +1447,7 @@ BEGIN
 		adminID
 	);
 
-	-- Orden
+	-- registrar order
 	CALL spRegisterOrderJson(
 		websiteID,
 		customerID,
@@ -1268,19 +1461,23 @@ BEGIN
 		JSON_ARRAY(
 			JSON_OBJECT(
 				'commercialProductId', commercialProductID,
-				'quantity', 2,
-				'unitPrice', 12950.00
+				'quantity',            2,
+				'unitPrice',           12950.00
 			)
 		),
 		adminID
 	);
 
-	SELECT orderId INTO orderID
-	FROM orders
-	ORDER BY orderId DESC
+	SELECT o.orderId INTO orderID
+	FROM orders o
+	ORDER BY o.orderId DESC
 	LIMIT 1;
 
-	-- Pago
+	IF orderID IS NULL THEN
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'No se pudo obtener orderID';
+	END IF;
+
+	-- pagar
 	CALL spRegisterPayment(
 		orderID,
 		paymentMethodID,
@@ -1293,7 +1490,7 @@ BEGIN
 		adminID
 	);
 
-	-- Envío
+	-- parte de envio 
 	CALL spRegisterShipment(
 		orderID,
 		courierID,
@@ -1303,10 +1500,10 @@ BEGIN
 		NULL,
 		adminID
 	);
+
 END$$
+
 DELIMITER ;
 
-
-
-
+call spSeedDynamicBrands();
 
