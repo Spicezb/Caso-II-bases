@@ -1,4 +1,3 @@
-
 CREATE TABLE products (
     productid SERIAL PRIMARY KEY,
     categoryName VARCHAR(100)

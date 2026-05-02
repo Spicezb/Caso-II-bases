@@ -1505,5 +1505,5 @@ END$$
 
 DELIMITER ;
 
+--Llamada al sp
 call spSeedDynamicBrands();
-

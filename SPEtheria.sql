@@ -1129,3 +1129,7 @@ BEGIN
 	);
 END;
 $$;
+
+
+--Llamada al sp
+CALL spSeedEtheria();
