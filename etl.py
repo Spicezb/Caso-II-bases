@@ -1,15 +1,13 @@
 import pandas as pd
 from sqlalchemy import create_engine, text
 
-# conecciones Xavi
+# Conecciones Xavi
 mysql_engine = create_engine(
     "mysql+pymysql://root:123456@localhost:3306/dynamic"
 )
-
 etheria_engine = create_engine(
     "postgresql://postgres:123456@localhost:5434/etheria"
 )
-
 dw_engine = create_engine(
     "postgresql://postgres:123456@localhost:5435/datawarehouse"
 )
@@ -39,7 +37,9 @@ SELECT
     o.orderDate,
     od.quantity,
     od.lineSubtotal,
-    cp.productVariantId
+    cp.productVariantId,
+    cur.isoCode AS currencyCode,
+    er.rate AS rateToUsd
 FROM orderDetails od
 JOIN orders o ON od.orderId = o.orderId
 JOIN commercialProducts cp ON od.commercialProductId = cp.commercialProductId
@@ -48,6 +48,8 @@ JOIN productCategories pc ON bp.productCategoryId = pc.productCategoryId
 JOIN brands b ON cp.brandId = b.brandId
 JOIN websites w ON o.websiteId = w.websiteId
 JOIN countries c ON w.countryId = c.countryId
+JOIN currencies cur ON o.currencyId = cur.currencyId
+JOIN exchangeRates er ON o.exchangeRateId = er.exchangeRateId
 """
 
 df_sales = pd.read_sql(sales_query, mysql_engine)
@@ -63,12 +65,6 @@ FROM importItems ii
 df_costs = pd.read_sql(cost_query, etheria_engine)
 df_costs.columns = df_costs.columns.str.lower()
 
-print("Dynamic productVariantId:")
-print(df_sales["productvariantid"].drop_duplicates().tolist())
-
-print("Etheria productVariantId:")
-print(df_costs["productvariantid"].drop_duplicates().tolist())
-
 df = df_sales.merge(df_costs, on="productvariantid", how="inner")
 
 if df.empty:
@@ -79,7 +75,11 @@ df["month"] = df["orderdate"].dt.month
 df["year"] = df["orderdate"].dt.year
 df["monthname"] = df["orderdate"].dt.strftime("%B")
 
-df["revenueusd"] = df["linesubtotal"]
+# ingresos
+df["revenue_original"] = df["linesubtotal"]
+df["revenueusd"] = df["revenue_original"] * df["ratetousd"]
+
+# costo único
 df["costusd"] = df["unitcostusd"] * df["quantity"]
 df["profitusd"] = df["revenueusd"] - df["costusd"]
 df["costtypename"] = "import"
@@ -91,23 +91,21 @@ df_summary = df.groupby([
     "month",
     "monthname",
     "year",
-    "costtypename"
+    "costtypename",
+    "currencycode",
+    "ratetousd"
 ]).agg({
     "costusd": "sum",
     "revenueusd": "sum",
     "profitusd": "sum"
 }).reset_index()
 
-
-# PRODUCTS
 df_products = df_summary[["categoryname"]].drop_duplicates()
 df_products.to_sql("products", dw_engine, if_exists="append", index=False)
 
-# MARKETS
 df_markets = df_summary[["countryname", "brandname"]].drop_duplicates()
 df_markets.to_sql("markets", dw_engine, if_exists="append", index=False)
 
-# DATES
 df_dates = df_summary[["month", "monthname", "year"]].drop_duplicates()
 df_dates.to_sql("dates", dw_engine, if_exists="append", index=False)
 
@@ -128,19 +126,18 @@ df_insert = df_final[[
     "marketid",
     "dateid",
     "costtypename",
+    "currencycode",
+    "ratetousd",
     "costusd",
     "revenueusd",
     "profitusd"
 ]].rename(columns={
+    "ratetousd": "exchangeratetousd",
     "costusd": "totalcostusd",
     "revenueusd": "totalrevenueusd",
     "profitusd": "totalprofitusd"
 })
 
-# DEBUG FINAL
-print("Filas finales a insertar:", len(df_insert))
-print(df_insert.head())
-
 df_insert.to_sql("summaries", dw_engine, if_exists="append", index=False)
 
-print("ETL COMPLETO")
+print("ETL FINAL FUNCIONANDO 💣")

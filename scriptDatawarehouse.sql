@@ -24,6 +24,8 @@ CREATE TABLE summaries (
     dateid INT NOT NULL,
 
     costTypeName VARCHAR(50),
+    currencycode VARCHAR(10),
+	exchangeratetousd NUMERIC(10,4),
 
     totalCostUsd NUMERIC(12,2),
     totalRevenueUsd NUMERIC(12,2),
